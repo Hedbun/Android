@@ -16,24 +16,35 @@ using Android.OS;
 using Android.Bluetooth;
 using Android.Bluetooth.LE;
 
+using Java.Util;
+
+
 namespace drone_controller
 {
     public partial class MainPage : ContentPage
     {
+        private readonly UUID _serviceUuid = UUID.FromString("795090c7-420d-4048-a24e-18e60180e23c");
         BluetoothLeAdvertiser _mBleAd;
         MyAdvertiseCallback _myAdvertiseCallback = new MyAdvertiseCallback();
         public MainPage()
         {
             InitializeComponent();
             InitBleAd();
-        }   
-        
+            
+        }        
+
         private void InitBleAd()
         {
             BluetoothManager mBluetoothManager = (BluetoothManager)Android.App.Application.Context.GetSystemService(Android.Content.ContextWrapper.BluetoothService);
             BluetoothAdapter mBluetoothAdapter = mBluetoothManager.Adapter;
             BluetoothLeAdvertiser mBluetoothLeAdvertiser = mBluetoothAdapter.BluetoothLeAdvertiser;
             _mBleAd = mBluetoothLeAdvertiser;
+        }
+
+        void OnSliderValueChanged(object sender, ValueChangedEventArgs args)
+        {
+            double value = args.NewValue;
+            valueLabel.Text = String.Format("{0}", value);
         }
 
         private void Switch_Toggled(object sender, ToggledEventArgs e)
@@ -53,7 +64,7 @@ namespace drone_controller
                 //Java.Util.UUID javaUuid = Java.Util.UUID.FromString(guid);
                 ParcelUuid parcelUuid = new ParcelUuid(javaUuid);
 
-                String strPayload = "hedbun";
+                String strPayload = valueLabel.Text;
                 byte[] payload = Encoding.UTF8.GetBytes(strPayload);
 
                 AdvertiseData data = new AdvertiseData.Builder()
@@ -61,7 +72,7 @@ namespace drone_controller
                     //.AddServiceUuid(parcelUuid)
                     //.AddServiceData(parcelUuid, payload)
                     .AddManufacturerData(3, payload)
-                    .SetIncludeTxPowerLevel(false)                    
+                    .SetIncludeTxPowerLevel(false)                                                    
                     .Build();
 
                 //var SDpacket = data.ServiceData;
@@ -89,6 +100,7 @@ namespace drone_controller
             base.OnStartSuccess(settingsInEffect);
         }
     }
+    
 
     //private static ParcelUuid parseUuidFrom(byte[] uuidBytes)
     //{
