@@ -47,20 +47,24 @@ namespace drone_controller
                 .SetTxPowerLevel(AdvertiseTx.PowerMedium)
                 .Build();
 
-                //string guid = Guid.NewGuid().ToString();
-                
-                //Java.Util.UUID javaUuid = Java.Util.UUID.FromString(guid);
-                //ParcelUuid parelUuid = new ParcelUuid(javaUuid);
+                string guid = Guid.NewGuid().ToString();
 
-                //String strPayload = "hedbun";
-                //byte[] payload = Encoding.UTF8.GetBytes(strPayload);
-                
+                Java.Util.UUID javaUuid = new Java.Util.UUID(1, 1);
+                //Java.Util.UUID javaUuid = Java.Util.UUID.FromString(guid);
+                ParcelUuid parcelUuid = new ParcelUuid(javaUuid);
+
+                String strPayload = "hedbun";
+                byte[] payload = Encoding.UTF8.GetBytes(strPayload);
+
                 AdvertiseData data = new AdvertiseData.Builder()
                     .SetIncludeDeviceName(true)
-                    //.AddServiceUuid(parelUuid)
-                    //.AddServiceData(uuid, payload)
+                    //.AddServiceUuid(parcelUuid)
+                    //.AddServiceData(parcelUuid, payload)
+                    .AddManufacturerData(3, payload)
                     .SetIncludeTxPowerLevel(false)                    
                     .Build();
+
+                //var SDpacket = data.ServiceData;
 
                 _mBleAd.StartAdvertising(settings, data, _myAdvertiseCallback);
                 //bluetoothManager.Adapter.BluetoothLeAdvertiser.StartAdvertising(settings, data, myAdvertiseCallback);
