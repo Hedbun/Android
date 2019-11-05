@@ -29,10 +29,20 @@ namespace drone_controller
         public MainPage()
         {
             InitializeComponent();
-            InitBleAd();
-            
-        }        
+            InitBleAd();            
+        }
 
+        void OnSliderValueChanged(object sender, ValueChangedEventArgs args)
+        {
+            double value = args.NewValue;
+            valueLabel.Text = String.Format("{0}", (int)value);
+
+            if (switchOnOff.IsToggled)
+            {
+                StartAdvertising();
+            }
+
+        }
         private void InitBleAd()
         {
             BluetoothManager mBluetoothManager = (BluetoothManager)Android.App.Application.Context.GetSystemService(Android.Content.ContextWrapper.BluetoothService);
@@ -41,51 +51,69 @@ namespace drone_controller
             _mBleAd = mBluetoothLeAdvertiser;
         }
 
-        void OnSliderValueChanged(object sender, ValueChangedEventArgs args)
-        {
-            double value = args.NewValue;
-            valueLabel.Text = String.Format("{0}", value);
-        }
-
         private void Switch_Toggled(object sender, ToggledEventArgs e)
         {
             if (e.Value)
             {
+                StartAdvertising();
+            }
+            else
+            {
+                try
+                {
+                    _mBleAd.StopAdvertising(_myAdvertiseCallback);
+                }
+                catch (Exception ex)
+                {
+                    lCurrentState.Text = "Failure: " + ex;
+                }
+
+                lCurrentState.Text = "Currently off";
+            }                                    
+        }
+
+        public void StartAdvertising()
+        {
+            try
+            {
+                _mBleAd.StopAdvertising(_myAdvertiseCallback);
+
                 AdvertiseSettings settings = new AdvertiseSettings.Builder()
-                .SetAdvertiseMode(AdvertiseMode.Balanced)
-                .SetConnectable(false)
-                .SetTimeout(0)
-                .SetTxPowerLevel(AdvertiseTx.PowerMedium)
-                .Build();
+                    .SetAdvertiseMode(AdvertiseMode.Balanced)
+                    .SetConnectable(false)
+                    .SetTimeout(0)
+                    .SetTxPowerLevel(AdvertiseTx.PowerMedium)
+                    .Build();
 
-                string guid = Guid.NewGuid().ToString();
-
-                Java.Util.UUID javaUuid = new Java.Util.UUID(1, 1);
+                //string guid = Guid.NewGuid().ToString();
                 //Java.Util.UUID javaUuid = Java.Util.UUID.FromString(guid);
-                ParcelUuid parcelUuid = new ParcelUuid(javaUuid);
-
+                //ParcelUuid parcelUuid = new ParcelUuid(javaUuid);
+                //byte[] temp = Encoding.UTF8.GetBytes(guid);
                 String strPayload = valueLabel.Text;
                 byte[] payload = Encoding.UTF8.GetBytes(strPayload);
 
                 AdvertiseData data = new AdvertiseData.Builder()
                     .SetIncludeDeviceName(true)
-                    //.AddServiceUuid(parcelUuid)
                     //.AddServiceData(parcelUuid, payload)
-                    .AddManufacturerData(3, payload)
-                    .SetIncludeTxPowerLevel(false)                                                    
+                    .AddManufacturerData(1, payload)
+                    .SetIncludeTxPowerLevel(false)
                     .Build();
 
                 //var SDpacket = data.ServiceData;
 
                 _mBleAd.StartAdvertising(settings, data, _myAdvertiseCallback);
-                //bluetoothManager.Adapter.BluetoothLeAdvertiser.StartAdvertising(settings, data, myAdvertiseCallback);
+                lCurrentState.Text = "Currently on";
             }
-            else
+            //catch (NullReferenceException ex)
+            //{
+            //    lCurrentState.Text = "Please, turn bluetooth on.";
+            //}                
+            catch (Exception ex)
             {
-                _mBleAd.StopAdvertising(_myAdvertiseCallback);
-                //bluetoothManager.Adapter.BluetoothLeAdvertiser.StopAdvertising(myAdvertiseCallback);
-            }                                    
+                lCurrentState.Text = "Failure: " + ex;
+            }
         }
+
     }
 
     public class MyAdvertiseCallback : AdvertiseCallback
