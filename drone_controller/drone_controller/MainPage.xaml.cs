@@ -3,6 +3,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Xamarin.Forms;
 
@@ -24,12 +25,42 @@ namespace drone_controller
     public partial class MainPage : ContentPage
     {
         private readonly UUID _serviceUuid = UUID.FromString("795090c7-420d-4048-a24e-18e60180e23c");
+        private static readonly object _mBleAdLock = new object();
         BluetoothLeAdvertiser _mBleAd;
         MyAdvertiseCallback _myAdvertiseCallback = new MyAdvertiseCallback();
         public MainPage()
         {
             InitializeComponent();
             InitBleAd();            
+        }
+        
+        private void InitBleAd()
+        {
+            BluetoothManager mBluetoothManager = (BluetoothManager)Android.App.Application.Context.GetSystemService(Android.Content.ContextWrapper.BluetoothService);
+            BluetoothAdapter mBluetoothAdapter = mBluetoothManager.Adapter;
+            BluetoothLeAdvertiser mBluetoothLeAdvertiser = mBluetoothAdapter.BluetoothLeAdvertiser;            
+            _mBleAd = mBluetoothLeAdvertiser;
+        }
+
+        private void Switch_Toggled(object sender, ToggledEventArgs e)
+        {
+            if (e.Value)
+            {
+                StartAdvertising();
+                lCurrentState.Text = "Currently on";
+            }
+            else
+            {
+                try
+                {
+                    _mBleAd.StopAdvertising(_myAdvertiseCallback);
+                    lCurrentState.Text = "Currently off";
+                }
+                catch (Exception ex)
+                {
+                    lCurrentState.Text = "Failure: " + ex;
+                }                
+            }                                    
         }
 
         void OnSliderValueChanged(object sender, ValueChangedEventArgs args)
@@ -39,88 +70,59 @@ namespace drone_controller
 
             if (switchOnOff.IsToggled)
             {
+                //Thread thread = new Thread(new ThreadStart(StartAdvertising));
+                //thread.Start();
                 StartAdvertising();
             }
-
-        }
-        private void InitBleAd()
-        {
-            BluetoothManager mBluetoothManager = (BluetoothManager)Android.App.Application.Context.GetSystemService(Android.Content.ContextWrapper.BluetoothService);
-            BluetoothAdapter mBluetoothAdapter = mBluetoothManager.Adapter;
-            BluetoothLeAdvertiser mBluetoothLeAdvertiser = mBluetoothAdapter.BluetoothLeAdvertiser;
-            _mBleAd = mBluetoothLeAdvertiser;
         }
 
-        private void Switch_Toggled(object sender, ToggledEventArgs e)
+        public void StartAdvertising()
         {
-            if (e.Value)
-            {
-                StartAdvertising();
-            }
-            else
-            {
+            //lock (_mBleAdLock)
+            //{
                 try
                 {
                     _mBleAd.StopAdvertising(_myAdvertiseCallback);
+
+                    AdvertiseSettings settings = new AdvertiseSettings.Builder()
+                        .SetAdvertiseMode(AdvertiseMode.Balanced)
+                        .SetConnectable(false)
+                        .SetTimeout(200)
+                        .SetTxPowerLevel(AdvertiseTx.PowerMedium)
+                        .Build();
+
+                    //string guid = Guid.NewGuid().ToString();
+                    //Java.Util.UUID javaUuid = new Java.Util.UUID(1, 1);
+                    //Java.Util.UUID javaUuid = Java.Util.UUID.FromString(guid);
+                    //ParcelUuid parcelUuid = new ParcelUuid(javaUuid);
+                    //byte[] temp = Encoding.UTF8.GetBytes(guid);
+
+                    String strPayload = valueLabel.Text;
+                    byte[] payload = Encoding.UTF8.GetBytes(strPayload);
+
+                    AdvertiseData data = new AdvertiseData.Builder()
+                        .SetIncludeDeviceName(true)
+                        //.AddServiceUuid(parcelUuid)
+                        //.AddServiceData(parcelUuid, payload)
+                        .AddManufacturerData(1, payload)
+                        .SetIncludeTxPowerLevel(false)
+                        .Build();
+
+                    _mBleAd.StartAdvertising(settings, data, _myAdvertiseCallback);
                 }
                 catch (Exception ex)
                 {
                     lCurrentState.Text = "Failure: " + ex;
                 }
-
-                lCurrentState.Text = "Currently off";
-            }                                    
-        }
-
-        public void StartAdvertising()
-        {
-            try
-            {
-                _mBleAd.StopAdvertising(_myAdvertiseCallback);
-
-                AdvertiseSettings settings = new AdvertiseSettings.Builder()
-                    .SetAdvertiseMode(AdvertiseMode.Balanced)
-                    .SetConnectable(false)
-                    .SetTimeout(0)
-                    .SetTxPowerLevel(AdvertiseTx.PowerMedium)
-                    .Build();
-
-                //string guid = Guid.NewGuid().ToString();
-                //Java.Util.UUID javaUuid = Java.Util.UUID.FromString(guid);
-                //ParcelUuid parcelUuid = new ParcelUuid(javaUuid);
-                //byte[] temp = Encoding.UTF8.GetBytes(guid);
-                String strPayload = valueLabel.Text;
-                byte[] payload = Encoding.UTF8.GetBytes(strPayload);
-
-                AdvertiseData data = new AdvertiseData.Builder()
-                    .SetIncludeDeviceName(true)
-                    //.AddServiceData(parcelUuid, payload)
-                    .AddManufacturerData(1, payload)
-                    .SetIncludeTxPowerLevel(false)
-                    .Build();
-
-                //var SDpacket = data.ServiceData;
-
-                _mBleAd.StartAdvertising(settings, data, _myAdvertiseCallback);
-                lCurrentState.Text = "Currently on";
-            }
-            //catch (NullReferenceException ex)
-            //{
-            //    lCurrentState.Text = "Please, turn bluetooth on.";
-            //}                
-            catch (Exception ex)
-            {
-                lCurrentState.Text = "Failure: " + ex;
-            }
-        }
-
+            //}
+        }        
     }
 
     public class MyAdvertiseCallback : AdvertiseCallback
     {
         public override void OnStartFailure([GeneratedEnum] AdvertiseFailure errorCode)
-        {
-            base.OnStartFailure(errorCode);
+        {            
+            base.OnStartFailure(errorCode);            
         }
 
         public override void OnStartSuccess(AdvertiseSettings settingsInEffect)
