@@ -87,7 +87,7 @@ namespace drone_controller
                     AdvertiseSettings settings = new AdvertiseSettings.Builder()
                         .SetAdvertiseMode(AdvertiseMode.Balanced)
                         .SetConnectable(false)
-                        .SetTimeout(200)
+                        .SetTimeout(300)
                         .SetTxPowerLevel(AdvertiseTx.PowerMedium)
                         .Build();
 
